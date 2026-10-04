@@ -1,0 +1,33 @@
+# Regras de Arquitetura do Projeto
+
+Clean Architecture com Next.js (App Router), TypeScript e SQLite via Drizzle ORM.
+Respeite estas fronteiras em TODA alteração.
+
+## Camadas
+
+1. `domain/` — Entidades e interfaces de repositório (portas). Regras de negócio puras.
+2. `use-cases/` — Um arquivo por caso de uso, classe com método `execute`. Depende só do domínio.
+3. `infrastructure/` — Drizzle, SQLite, implementações de repositório e `container.ts` (composition root).
+4. `app/` — Rotas e UI. Só traduz HTTP/UI em chamadas de casos de uso.
+
+## Regra de dependência (nunca violar)
+
+- `domain` NÃO importa de nenhuma outra camada.
+- `use-cases` importa SOMENTE de `domain`.
+- `infrastructure` importa de `domain`.
+- `app` importa de `infrastructure/container`. Nunca importa `drizzle-orm`, `db` ou schema.
+
+## Proibido
+
+- Importar `drizzle-orm`, `better-sqlite3` ou `next/*` em `domain` ou `use-cases`.
+- Acessar `db` ou schema fora de `infrastructure/`.
+- Regra de negócio em rotas, componentes ou repositórios.
+- Instanciar repositórios ou casos de uso dentro de rotas; use o `container.ts`.
+
+## Convenções
+
+- Novo caso de uso: criar `use-cases/<nome>.ts`, exportar instância em `container.ts`, consumir na rota.
+- Nova persistência: interface em `domain/repositories`, implementação em `infrastructure/repositories`.
+- Mudanças de schema: editar `schema.ts` e rodar `npm run db:generate`.
+- Arquivos em kebab-case; classes em PascalCase; TypeScript estrito.
+- Sem dependências externas nem containers: o banco é um arquivo SQLite local.
