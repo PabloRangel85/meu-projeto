@@ -48,6 +48,7 @@ export default function RoofMap({ address, residenceNumber }: RoofMapProps) {
     let control: Leaflet.Control.Draw | undefined;
     let featureGroup: Leaflet.FeatureGroup | undefined;
     let tileTimeout: number | undefined;
+    let hasLoadedTiles = false;
     let onMapCreated: Leaflet.LeafletEventHandlerFn | undefined;
     let onMapEdited: Leaflet.LeafletEventHandlerFn | undefined;
     let onMapDeleted: Leaflet.LeafletEventHandlerFn | undefined;
@@ -74,6 +75,7 @@ export default function RoofMap({ address, residenceNumber }: RoofMapProps) {
 
         imagery.once("load", () => {
           if (cancelled || !map) return;
+          hasLoadedTiles = true;
           setTilesLoaded(true);
           if (tileTimeout !== undefined) window.clearTimeout(tileTimeout);
 
@@ -110,7 +112,15 @@ export default function RoofMap({ address, residenceNumber }: RoofMapProps) {
               if (!featureGroup || event.layerType !== "polygon" || !(event.layer instanceof L.Polygon)) return;
               featureGroup.clearLayers();
               featureGroup.addLayer(event.layer);
-              setArea(getPolygonArea(event.layer, L));
+              const measuredArea = getPolygonArea(event.layer, L);
+              if (measuredArea === null) {
+                featureGroup.removeLayer(event.layer);
+                setError("Marque pelo menos três pontos distintos para medir o telhado.");
+                setArea(null);
+                return;
+              }
+              setError("");
+              setArea(measuredArea);
             };
             onMapEdited = (rawEvent) => {
               const event = rawEvent as Leaflet.DrawEvents.Edited;
@@ -147,7 +157,7 @@ export default function RoofMap({ address, residenceNumber }: RoofMapProps) {
         }).addTo(map);
 
         tileTimeout = window.setTimeout(() => {
-          if (!tilesLoaded && !cancelled) setTilesUnavailable(true);
+          if (!hasLoadedTiles && !cancelled) setTilesUnavailable(true);
         }, 15000);
         window.requestAnimationFrame(() => map?.invalidateSize());
       })
@@ -185,20 +195,22 @@ export default function RoofMap({ address, residenceNumber }: RoofMapProps) {
           {error}
         </p>
       ) : null}
+      {status !== "error" ? (
+        <div className="relative">
+          <div
+            ref={mapElement}
+            className="h-[420px] w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-100"
+            aria-label="Imagem aérea da residência"
+          />
+          {status === "ready" && !tilesLoaded && !tilesUnavailable ? (
+            <p className="absolute left-3 top-3 z-[1000] rounded bg-white/95 px-3 py-2 text-sm text-slate-700 shadow">
+              Carregando imagem aérea...
+            </p>
+          ) : null}
+        </div>
+      ) : null}
       {status === "ready" && coordinates ? (
         <>
-          <div className="relative">
-            <div
-              ref={mapElement}
-              className="h-[420px] w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-100"
-              aria-label="Imagem aérea da residência"
-            />
-            {!tilesLoaded && !tilesUnavailable ? (
-              <p className="absolute left-3 top-3 z-[1000] rounded bg-white/95 px-3 py-2 text-sm text-slate-700 shadow">
-                Carregando imagem aérea...
-              </p>
-            ) : null}
-          </div>
           {tilesUnavailable ? (
             <p role="alert" className="mt-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
               Não foi possível carregar a imagem aérea. A medição está desabilitada; tente novamente mais tarde.

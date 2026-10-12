@@ -48,6 +48,22 @@ type NominatimResult = {
 type GeocodeRequest = typeof fetch;
 
 const coordinateCache = new Map<string, Promise<Coordinates>>();
+let requestQueue: Promise<void> = Promise.resolve();
+let lastRequestStartedAt = 0;
+
+function scheduleNominatimRequest<T>(request: () => Promise<T>): Promise<T> {
+  const queuedRequest = requestQueue.then(async () => {
+    const delay = Math.max(0, 1000 - (Date.now() - lastRequestStartedAt));
+    if (delay > 0) {
+      await new Promise<void>((resolve) => setTimeout(resolve, delay));
+    }
+    lastRequestStartedAt = Date.now();
+    return request();
+  });
+
+  requestQueue = queuedRequest.then(() => undefined, () => undefined);
+  return queuedRequest;
+}
 
 export function formatResidentialAddress(
   address: ResidentialAddress,
@@ -96,12 +112,12 @@ export async function geocodeResidentialAddress(
   searchUrl.searchParams.set("postalcode", formatPostalCode(address.cep));
   searchUrl.searchParams.set("country", "Brazil");
 
-  const lookup = request(searchUrl, {
+  const lookup = scheduleNominatimRequest(() => request(searchUrl, {
     method: "GET",
     headers: { Accept: "application/json" },
     cache: "no-store",
     referrerPolicy: "strict-origin-when-cross-origin",
-  })
+  }))
     .then(async (response) => {
       if (response.status === 429) throw new NominatimRateLimitError();
       if (!response.ok) throw new NominatimServiceError();

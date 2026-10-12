@@ -9,14 +9,14 @@
 ## 2. Endereço e mapa aéreo
 
 - [x] 2.1 Manter o campo de número/identificador alfanumérico associado ao resultado ativo; verificar validação de campo vazio e limpeza ao consultar outro CEP.
-- [ ] 2.2 Substituir o mapa por Leaflet com tiles Esri World Imagery, zoom inicial adequado, marcador, coordenadas, estados de tiles e atribuição visível; verificar em viewport desktop e móvel.
+- [x] 2.2 Substituir o mapa por Leaflet com tiles Esri World Imagery, zoom inicial adequado, marcador, coordenadas, estados de tiles e atribuição visível; verificar em viewport desktop e móvel.
 - [x] 2.3 Manter o botão Mapa no resultado ativo, descartar mapa/medição quando CEP ou número mudar e informar que o histórico só permite buscas aproximadas; verificar o fluxo no navegador.
 
 ## 3. Medição do telhado
 
-- [ ] 3.1 Reimplementar desenho, edição e remoção do polígono com o controle nativo Leaflet Draw; verificar que menos de três vértices não finaliza a medição.
-- [ ] 3.2 Preservar e testar o cálculo esférico de área projetada em m² após criação/edição/remoção e manter o aviso sobre inclinação; verificar com `npm test`.
+- [x] 3.1 Reimplementar desenho, edição e remoção do polígono com o controle nativo Leaflet Draw; verificar que menos de três vértices não finaliza a medição.
+- [x] 3.2 Preservar e testar o cálculo esférico de área projetada em m² após criação/edição/remoção e manter o aviso sobre inclinação; verificar com `npm test`.
 
 ## 4. Verificação integrada
 
-- [ ] 4.1 Validar ponta a ponta sem chave Google: CEP, endereço não encontrado, geocodificação Nominatim, tiles Esri/atribuição, desenho/edição/limpeza e estados de erro; verificar `npm test`, `npx tsc --noEmit`, `npm run lint` e `npm run build`.
+- [x] 4.1 Validar ponta a ponta sem chave Google: CEP, endereço não encontrado, geocodificação Nominatim, tiles Esri/atribuição, desenho/edição/limpeza e estados de erro; verificar `npm test`, `npx tsc --noEmit`, `npm run lint` e `npm run build`.
