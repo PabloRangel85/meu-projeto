@@ -37,6 +37,18 @@ npm run dev
 
 A aplicação fica disponível em http://localhost:3000.
 
+## Mapa aéreo
+
+A busca geográfica usa o serviço público [Nominatim](https://nominatim.openstreetmap.org/), sem chave de API. A aplicação consulta o endereço completo somente quando o usuário abre o mapa; não use essa instância pública para autocomplete ou alto volume. Respeite a [política de uso do Nominatim](https://operations.osmfoundation.org/policies/nominatim/), incluindo o limite de uso e a identificação do aplicativo. A atribuição da geocodificação é © OpenStreetMap contributors.
+
+A imagem aérea usa os tiles Esri World Imagery no endpoint:
+
+```text
+https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}
+```
+
+Mantenha visível a atribuição: `Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community`. Os serviços são externos e sujeitos a disponibilidade e políticas dos respectivos provedores. A área desenhada é uma estimativa da projeção horizontal e não inclui inclinação do telhado.
+
 ## Endpoints
 
 ### POST /api/addresses

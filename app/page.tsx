@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
+import RoofMap from "./roof-map-client";
 
 type CepAddress = {
   cep: string;
@@ -16,9 +17,22 @@ type CepAddress = {
   searchedAt: string;
 };
 
+async function fetchCepHistory(signal?: AbortSignal): Promise<CepAddress[]> {
+  try {
+    const response = await fetch("/api/ceps/history", { signal });
+    const data = await response.json();
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+}
+
 export default function Home() {
   const [cep, setCep] = useState("");
+  const [residenceNumber, setResidenceNumber] = useState("");
   const [result, setResult] = useState<CepAddress | null>(null);
+  const [isMapOpen, setIsMapOpen] = useState(false);
+  const [mapError, setMapError] = useState("");
   const [history, setHistory] = useState<CepAddress[]>([]);
   const [historyError, setHistoryError] = useState("");
   const [isClearingHistory, setIsClearingHistory] = useState(false);
@@ -36,13 +50,7 @@ export default function Home() {
   };
 
   const loadHistory = async () => {
-    try {
-      const response = await fetch("/api/ceps/history");
-      const data = await response.json();
-      setHistory(Array.isArray(data) ? data : []);
-    } catch {
-      setHistory([]);
-    }
+    setHistory(await fetchCepHistory());
   };
 
   const handleClearHistory = async () => {
@@ -86,7 +94,11 @@ export default function Home() {
   };
 
   useEffect(() => {
-    loadHistory();
+    const controller = new AbortController();
+    void fetchCepHistory(controller.signal).then((historyResult) => {
+      startTransition(() => setHistory(historyResult));
+    });
+    return () => controller.abort();
   }, []);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -100,6 +112,10 @@ export default function Home() {
 
     setIsLoading(true);
     setError("");
+    setResidenceNumber("");
+    setResult(null);
+    setIsMapOpen(false);
+    setMapError("");
 
     try {
       const response = await fetch(`/api/ceps?cep=${encodeURIComponent(normalizedCep)}`);
@@ -121,8 +137,22 @@ export default function Home() {
 
   function handleClear() {
     setCep("");
+    setResidenceNumber("");
     setResult(null);
+    setIsMapOpen(false);
+    setMapError("");
     setError("");
+  }
+
+  function handleOpenMap() {
+    if (!residenceNumber.trim()) {
+      setMapError("Informe o número da residência ou S/N antes de abrir o mapa.");
+      setIsMapOpen(false);
+      return;
+    }
+
+    setMapError("");
+    setIsMapOpen(true);
   }
 
   return (
@@ -134,26 +164,26 @@ export default function Home() {
           </p>
           <h1 className="mt-3 text-3xl font-bold">Consulta de CEP</h1>
 
-          <form onSubmit={handleSubmit} className="mt-6 flex gap-3">
+          <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-3 sm:flex-row">
             <input
               type="text"
               name="cep"
               value={cep}
               onChange={(event) => setCep(formatCep(event.target.value))}
               placeholder="Digite o CEP (ex.: 01001-000)"
-              className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base outline-none transition focus:border-sky-500 focus:bg-white"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base outline-none transition focus:border-sky-500 focus:bg-white sm:flex-1"
             />
             <button
               type="submit"
               disabled={isLoading}
-              className="rounded-xl bg-slate-900 px-5 py-3 font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-70"
+              className="w-full rounded-xl bg-slate-900 px-5 py-3 font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
             >
               {isLoading ? "Consultando..." : "Consultar"}
             </button>
             <button
               type="button"
               onClick={handleClear}
-              className="rounded-xl border border-slate-300 bg-white px-4 py-3 font-medium text-slate-700 transition hover:bg-slate-100"
+              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 font-medium text-slate-700 transition hover:bg-slate-100 sm:w-auto"
             >
               Limpar
             </button>
@@ -176,7 +206,41 @@ export default function Home() {
                 <div><dt className="text-slate-500">Localidade</dt><dd className="font-medium">{result.localidade}</dd></div>
                 <div><dt className="text-slate-500">Complemento</dt><dd className="font-medium">{result.complemento || "—"}</dd></div>
                 <div><dt className="text-slate-500">DDD</dt><dd className="font-medium">{result.ddd || "—"}</dd></div>
+                <div className="sm:col-span-2">
+                  <label htmlFor="residence-number" className="text-slate-500">
+                    Número da residência
+                  </label>
+                  <input
+                    id="residence-number"
+                    name="residence-number"
+                    type="text"
+                    autoComplete="address-line2"
+                    value={residenceNumber}
+                    onChange={(event) => {
+                      setResidenceNumber(event.target.value);
+                      setIsMapOpen(false);
+                      setMapError("");
+                    }}
+                    placeholder="Ex.: 123, 42A ou S/N"
+                    className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-base outline-none transition focus:border-sky-500"
+                  />
+                </div>
               </dl>
+              <button
+                type="button"
+                onClick={handleOpenMap}
+                className="mt-5 rounded-lg bg-sky-700 px-4 py-2.5 font-medium text-white transition hover:bg-sky-800"
+              >
+                Mapa aéreo
+              </button>
+              {mapError ? <p role="alert" className="mt-3 text-sm text-red-700">{mapError}</p> : null}
+              {isMapOpen && result && residenceNumber.trim() ? (
+                <RoofMap
+                  key={`${result.cep}-${residenceNumber.trim()}`}
+                  address={result}
+                  residenceNumber={residenceNumber.trim()}
+                />
+              ) : null}
             </div>
           ) : null}
         </section>
@@ -193,6 +257,9 @@ export default function Home() {
               {isClearingHistory ? "Apagando..." : "Apagar histórico"}
             </button>
           </div>
+          <p className="mt-2 text-xs text-slate-500">
+            O histórico não guarda o número residencial; os mapas desta lista são aproximados.
+          </p>
           {historyError ? <p className="mt-3 text-sm text-red-700">{historyError}</p> : null}
           <ul className="mt-5 space-y-3">
             {history.length === 0 ? (
@@ -227,7 +294,8 @@ export default function Home() {
                     )}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    aria-label={`Ver endereço do CEP ${item.cep} no Google Maps`}
+                    aria-label={`Buscar endereço aproximado do CEP ${item.cep} no Google Maps`}
+                    title="Busca aproximada: o histórico não guarda número residencial"
                     className="shrink-0 rounded-md border border-sky-200 px-3 py-2 text-sm font-medium text-sky-700 transition hover:bg-sky-50"
                   >
                     Mapa
